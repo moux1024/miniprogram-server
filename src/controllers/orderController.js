@@ -1,30 +1,36 @@
 const pool = require('../config/database');
 const { sendOrderNotification } = require('../utils/email');
 
-// 创建订单
+const SERVICE_NAMES = { zichan: '资产管理', ai: 'AI 服云', rongzi: '融资服务', zixun: '企业咨询' };
+
+// 创建订单（山高服务：多服务类型 + 需求信息）
 async function createOrder(req, res) {
   const connection = await pool.getConnection();
 
   try {
     await connection.beginTransaction();
 
-    const { openid, functionId, userInfo, contactInfo } = req.body;
+    const {
+      openid,
+      userInfo,
+      selectedServices,
+      userName,
+      userPhone,
+      userCompany,
+      userNeed,
+      expectTime
+    } = req.body;
 
-    if (!openid || !functionId || !contactInfo) {
-      throw new Error('缺少必要参数');
+    if (!openid || !selectedServices || !Array.isArray(selectedServices) || selectedServices.length === 0) {
+      throw new Error('缺少必要参数：openid、selectedServices');
+    }
+    if (!userName || !userPhone || !userNeed) {
+      throw new Error('请填写姓名、联系电话和需求描述');
+    }
+    if (!/^1[3-9]\d{9}$/.test(userPhone)) {
+      throw new Error('请输入正确的手机号码');
     }
 
-    // 验证功能是否存在
-    const [functions] = await connection.query(
-      'SELECT * FROM functions WHERE id = ?',
-      [functionId]
-    );
-
-    if (functions.length === 0) {
-      throw new Error('功能不存在');
-    }
-
-    // 创建或获取用户
     let userId;
     const [existingUsers] = await connection.query(
       'SELECT id FROM users WHERE wechat_openid = ?',
@@ -33,78 +39,71 @@ async function createOrder(req, res) {
 
     if (existingUsers.length > 0) {
       userId = existingUsers[0].id;
-
-      // 更新用户联系方式
       await connection.query(
-        'UPDATE users SET nickname = ?, avatar_url = ?, phone = ?, email = ? WHERE id = ?',
+        'UPDATE users SET nickname = ?, avatar_url = ?, phone = ? WHERE id = ?',
         [
-          userInfo?.nickName,
+          userInfo?.nickName || userName,
           userInfo?.avatarUrl,
-          contactInfo.phone,
-          contactInfo.email,
+          userPhone,
           userId
         ]
       );
     } else {
-      // 创建新用户
       const [result] = await connection.query(
-        'INSERT INTO users (wechat_openid, nickname, avatar_url, phone, email) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO users (wechat_openid, nickname, avatar_url, phone) VALUES (?, ?, ?, ?)',
         [
           openid,
-          userInfo?.nickName,
+          userInfo?.nickName || userName,
           userInfo?.avatarUrl,
-          contactInfo.phone,
-          contactInfo.email
+          userPhone
         ]
       );
-
       userId = result.insertId;
     }
 
-    // 创建订单
+    const contactInfo = {
+      userName,
+      userPhone,
+      userCompany: userCompany || '',
+      userNeed,
+      expectTime: expectTime || ''
+    };
+
     const [orderResult] = await connection.query(
-      'INSERT INTO orders (user_id, function_id, contact_info, status) VALUES (?, ?, ?, ?)',
+      'INSERT INTO orders (user_id, service_types, contact_info, status) VALUES (?, ?, ?, ?)',
       [
         userId,
-        functionId,
-        JSON.stringify({
-          ...contactInfo,
-          userName: contactInfo.name,
-          userRemark: contactInfo.remark
-        }),
+        JSON.stringify(selectedServices),
+        JSON.stringify(contactInfo),
         'pending'
       ]
     );
 
     await connection.commit();
 
-    // 发送邮件通知（异步，不影响主流程）
+    const orderId = orderResult.insertId;
     sendOrderNotification({
       user: {
         id: userId,
-        nickname: userInfo?.nickName || contactInfo.name,
-        phone: contactInfo.phone,
-        email: contactInfo.email
+        nickname: userInfo?.nickName || userName,
+        phone: userPhone
       },
-      function: functions[0],
       order: {
-        id: orderResult.insertId,
-        contactInfo: contactInfo
-      }
+        id: orderId,
+        contactInfo
+      },
+      serviceTypes: selectedServices
     }).catch(err => {
       console.error('发送邮件通知失败:', err);
     });
 
     res.json({
       success: true,
-      data: {
-        orderId: orderResult.insertId
-      }
+      data: { orderId }
     });
   } catch (error) {
     await connection.rollback();
     console.error('创建订单失败:', error);
-
     res.status(500).json({
       success: false,
       message: error.message || '创建订单失败'
@@ -114,6 +113,53 @@ async function createOrder(req, res) {
   }
 }
 
+// 获取当前用户订单列表（按 openid）
+async function getMyOrders(req, res) {
+  try {
+    const { openid } = req.query;
+    if (!openid) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少 openid'
+      });
+    }
+
+    const [users] = await pool.query(
+      'SELECT id FROM users WHERE wechat_openid = ?',
+      [openid]
+    );
+    if (users.length === 0) {
+      return res.json({ success: true, data: [] });
+    }
+
+    const userId = users[0].id;
+    const [rows] = await pool.query(
+      'SELECT id, service_types, contact_info, status, created_at FROM orders WHERE user_id = ? ORDER BY created_at DESC',
+      [userId]
+    );
+
+    const list = rows.map(row => ({
+      id: row.id,
+      service_types: typeof row.service_types === 'string' ? JSON.parse(row.service_types || '[]') : (row.service_types || []),
+      contact_info: typeof row.contact_info === 'string' ? JSON.parse(row.contact_info || '{}') : (row.contact_info || {}),
+      status: row.status,
+      created_at: row.created_at
+    }));
+
+    res.json({
+      success: true,
+      data: list
+    });
+  } catch (error) {
+    console.error('获取我的订单失败:', error);
+    res.status(500).json({
+      success: false,
+      message: '获取订单失败'
+    });
+  }
+}
+
 module.exports = {
-  createOrder
+  createOrder,
+  getMyOrders
 };

@@ -259,7 +259,8 @@ async function getOrders(req, res) {
       data: {
         list: rows.map(row => ({
           ...row,
-          contact_info: JSON.parse(row.contact_info || '{}')
+          contact_info: JSON.parse(row.contact_info || '{}'),
+          service_types: typeof row.service_types === 'string' ? JSON.parse(row.service_types || '[]') : (row.service_types || [])
         })),
         total: countResult[0].total,
         page: parseInt(page),

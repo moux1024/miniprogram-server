@@ -42,7 +42,7 @@ sudo mysql -u root -p
 
 ```sql
 CREATE DATABASE IF NOT EXISTS wechat_mall DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE USER 'wechat_mall'@'localhost' IDENTIFIED BY '你的强密码';
+CREATE USER 'wechat_mall'@'localhost' IDENTIFIED BY 'test123456';
 GRANT ALL PRIVILEGES ON wechat_mall.* TO 'wechat_mall'@'localhost';
 FLUSH PRIVILEGES;
 EXIT;

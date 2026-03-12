@@ -29,17 +29,17 @@ CREATE TABLE IF NOT EXISTS users (
   INDEX idx_openid (wechat_openid)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
--- 订单/咨询记录表
+-- 订单/咨询记录表（山高服务：多服务类型 + 需求信息）
 CREATE TABLE IF NOT EXISTS orders (
   id INT AUTO_INCREMENT PRIMARY KEY,
   user_id INT NOT NULL COMMENT '用户ID',
-  function_id INT NOT NULL COMMENT '功能ID',
-  contact_info JSON COMMENT '联系方式详情，JSON',
+  service_types JSON COMMENT '服务类型数组，如 ["zichan","ai"]',
+  function_id INT NULL COMMENT '功能ID(可选，兼容旧数据)',
+  contact_info JSON COMMENT '需求与联系方式，含 userName, userPhone, userCompany, userNeed, expectTime 等',
   status ENUM('pending', 'processed', 'completed') DEFAULT 'pending' COMMENT '状态',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-  FOREIGN KEY (function_id) REFERENCES functions(id) ON DELETE CASCADE,
   INDEX idx_user_id (user_id),
   INDEX idx_function_id (function_id),
   INDEX idx_status (status)

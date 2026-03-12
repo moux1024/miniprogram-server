@@ -17,6 +17,7 @@ router.get('/functions', functionController.getFunctions);
 router.get('/functions/:id', functionController.getFunctionById);
 
 router.post('/users', userController.createOrUpdateUser);
+router.get('/orders/my', orderController.getMyOrders);
 router.post('/orders', orderController.createOrder);
 
 router.post('/wechat/code2session', wechatController.code2session);
