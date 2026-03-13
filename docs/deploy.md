@@ -42,19 +42,13 @@ EXIT;
 
 ## 四、初始化表结构
 
-在项目根目录（backend 目录）下执行：
+在项目根目录（backend 目录）下，使用 **wechat_mall** 用户执行：
 
 ```bash
 mysql -u wechat_mall -p wechat_mall < database.sql
 ```
 
-或使用 root 用户：
-
-```bash
-mysql -u root -p wechat_mall < database.sql
-```
-
-按提示输入对应用户的密码。
+按提示输入第三步为 `wechat_mall` 设置的密码。
 
 ## 五、配置环境变量
 
