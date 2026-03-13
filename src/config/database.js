@@ -1,6 +1,13 @@
 const mysql = require('mysql2/promise');
 require('dotenv').config();
 
+// 启动时检查：避免未配置 DB 密码导致 ER_ACCESS_DENIED_NO_PASSWORD_ERROR
+if (!process.env.DB_PASSWORD && process.env.DB_USER) {
+  console.error(
+    '[database] 警告: DB_PASSWORD 未设置，连接 MySQL 可能报 Access denied。请在 .env 中配置 DB_PASSWORD。'
+  );
+}
+
 // 创建数据库连接池
 const pool = mysql.createPool({
   host: process.env.DB_HOST,

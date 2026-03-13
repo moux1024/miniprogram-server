@@ -19,14 +19,6 @@ sudo systemctl start mysql
 sudo systemctl enable mysql
 ```
 
-### CentOS / RHEL
-
-```bash
-sudo yum install -y mysql-server   # 或 dnf install -y mysql-server
-sudo systemctl start mysqld
-sudo systemctl enable mysqld
-```
-
 可选：执行 `sudo mysql_secure_installation` 设置 root 密码、移除匿名用户等。
 
 ## 三、创建数据库与用户
