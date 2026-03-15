@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS admins (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='管理员表';
 
--- 插入默认管理员账号（密码：admin123，将在首次运行时通过bcrypt加密）
+-- 插入默认管理员账号（密码：admin123_temp，将在首次运行时通过bcrypt加密）
 -- 注意：请在首次运行后修改默认密码
 INSERT INTO admins (username, password) VALUES
 ('admin', 'admin123_temp')
