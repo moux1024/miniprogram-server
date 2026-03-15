@@ -1,6 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
+const http = require('http');
+const https = require('https');
 require('dotenv').config();
 
 const config = require('./config');
@@ -40,11 +43,31 @@ app.use((err, req, res, next) => {
 
 // 启动服务器
 const PORT = config.port;
+const SSL_CERT_DIR = process.env.SSL_CERT_DIR || '/etc/cloudflare';
+const SSL_CERT = process.env.SSL_CERT || path.join(SSL_CERT_DIR, 'cert.pem');
+const SSL_KEY = process.env.SSL_KEY || path.join(SSL_CERT_DIR, 'key.pem');
 
 // 初始化管理员密码
 initAdminPassword();
 
-app.listen(PORT, () => {
-  console.log(`服务器运行在 http://localhost:${PORT}`);
+function createServer() {
+  try {
+    const cert = fs.readFileSync(SSL_CERT);
+    const key = fs.readFileSync(SSL_KEY);
+    const httpsOptions = { cert, key };
+    return https.createServer(httpsOptions, app);
+  } catch (err) {
+    if (err.code === 'ENOENT') {
+      console.warn('未找到 HTTPS 证书，使用 HTTP。证书路径:', SSL_CERT, SSL_KEY);
+      return http.createServer(app);
+    }
+    throw err;
+  }
+}
+
+const server = createServer();
+server.listen(PORT, () => {
+  const protocol = server instanceof https.Server ? 'https' : 'http';
+  console.log(`服务器运行在 ${protocol}://localhost:${PORT}`);
   console.log(`环境: ${config.nodeEnv}`);
 });
