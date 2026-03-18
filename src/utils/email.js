@@ -41,7 +41,7 @@ async function sendOrderNotification({ user, function: func, order, serviceTypes
   try {
     const emailConfig = await getEmailConfig();
 
-    const transporter = nodemailer.createTransporter({
+    const transporter = nodemailer.createTransport({
       host: emailConfig.smtp.host,
       port: emailConfig.smtp.port,
       secure: emailConfig.smtp.port === 465,
